@@ -104,15 +104,14 @@ class UniLinearTopo2( OpticalTopo ):
         # Add nodes: (host, switch, terminal, ROADMS (east, west))
         # Note doubled transceivers for unidirectional links!
         # We also waste a transceiver/port pair for loopback
-        #transceivers = tuple((f'tx{ch}', power, 'C')
-                             #for ch in range(1, 2*nodecount+1))
         transceivers = tuple((f'tx{ch}', power, 'C')
-                             for ch in range(1, 2 * 12+1))
+                             for ch in range(1, 2*nodecount+1))
         topts = {'transceivers': transceivers, 'monitor_mode': 'in'}
         ropts = {}  # was: {'wss_dict': {ch:(7.0,None) for ch in range(1,91)}}
-            
         for i in range(1, nodecount+1):
             self.addHost(f'h{i}')
+        for i in range(1, nodecount+1):
+            #self.addHost(f'h{i}')
             self.addSwitch(f's{i}')
             self.addTerminal(f't{i}', **topts)
             self.addROADM(f'r{i}', **ropts)
@@ -151,23 +150,15 @@ class UniLinearTopo2( OpticalTopo ):
                     f's{node}', f't{node}', port1=port1, port2=port2)
                 # Terminal uplink and downlink to/from roadm
                 self.wdmLink(f't{node}', f'r{node}', spans=[1*m],
-                            port1=uplink(dest), port2=addport(dest))
+                             port1=uplink(dest), port2=addport(dest))
                 self.wdmLink(f'r{node}', f't{node}', spans=[1*m],
-                            port1=dropport(dest), port2=downlink(dest))
+                             port1=dropport(dest), port2=downlink(dest))   
 
-        for dest in range(3, 6+1):  
-            # Terminal uplink and downlink to/from roadm
-            self.wdmLink(f't{1}', f'r{1}', spans=[1*m],
-                        port1=uplink(dest * 10), port2=addport(dest * 10))
-            self.wdmLink(f'r{1}', f't{1}', spans=[1*m],
-                    port1=dropport(dest * 10), port2=downlink(dest * 10))
-            self.wdmLink(f't{2}', f'r{2}', spans=[1*m],
-                        port1=uplink(dest * 10), port2=addport(dest * 10))
-            self.wdmLink(f'r{2}', f't{2}', spans=[1*m],
-                    port1=dropport(dest * 10), port2=downlink(dest * 10))
-
-
-        
+        #for dest in range(3, 6+1):
+        #    self.ethLink(f'h{dest}', f's{1}', port2=self.ethport(dest))
+        #for dest in range(7, 10+1):
+        #    self.ethLink(f'h{dest}', f's{2}', port2=self.ethport(dest))
+              
 def getber(net):
     for node in net:
         if "monitor" in node:
@@ -249,18 +240,6 @@ def config(net, mesh=False, root=1):
             roadm.connect(addport(j), lineout(i,j), [addch])
             print(roadm, f'drop ch{dropch} port {dropport(j)} <- {j}')
             roadm.connect(linein(j,i), dropport(j), [dropch])
-            if j == 2:
-                roadm.connect(addport((j+1) *10), lineout(i,j), [addch])
-                roadm.connect(addport((j+2) *10), lineout(i,j), [addch])
-                roadm.connect(addport((j+3) *10), lineout(i,j), [addch])
-                roadm.connect(addport((j+4) *10), lineout(i,j), [addch])
-                
-                roadm.connect(linein(j,i), dropport((j+1) *10), [dropch])
-                roadm.connect(linein(j,i), dropport((j+2) *10), [dropch])
-                roadm.connect(linein(j,i), dropport((j+3) *10), [dropch])
-                roadm.connect(linein(j,i), dropport((j+4) *10), [dropch])
-
-
             # Don't pass add/drop channels
             passchannels.remove(addch)
             passchannels.remove(dropch)
@@ -270,50 +249,11 @@ def config(net, mesh=False, root=1):
                 ethPort=ethport(j), wdmPort=uplink(j), channel=addch)
             terminal.connect(
                 wdmPort=downlink(j), ethPort=ethport(j), channel=dropch)
-            if j == 2:
-                terminal.connect(ethPort=ethport(j), wdmPort=uplink((j+1) *10), channel=addch)
-                terminal.connect(ethPort=ethport(j), wdmPort=uplink((j+2) *10), channel=addch)
-                terminal.connect(ethPort=ethport(j), wdmPort=uplink((j+3) *10), channel=addch)
-                terminal.connect(ethPort=ethport(j), wdmPort=uplink((j+4) *10), channel=addch)
-
-                terminal.connect(wdmPort=downlink((j+1) *10), ethPort=ethport(j), channel=dropch)
-                terminal.connect(wdmPort=downlink((j+2) *10), ethPort=ethport(j), channel=dropch)
-                terminal.connect(wdmPort=downlink((j+3) *10), ethPort=ethport(j), channel=dropch)
-                terminal.connect(wdmPort=downlink((j+4) *10), ethPort=ethport(j), channel=dropch)
-
-        
         # Pass all channels that were not added or dropped
         if 1 < i < nodecount:
             print(roadm, 'pass', passchannels)
             roadm.connect(eastin, eastout, passchannels)
             roadm.connect(westin, westout, passchannels)
-
-
-
-  
-        #roadm = net[f'r{1}']
-        #roadm.connect(addport(34), lineout(1,2), 1)
-        #roadm.connect(addport(44), lineout(1,2), 1)
-        #roadm.connect(addport(54), lineout(1,2), 1)
-        #roadm.connect(addport(64), lineout(1,2), 1)
-           
-        #roadm.connect(linein(2,1), dropport(36), 2)
-        #roadm.connect(linein(2,1), dropport(46), 2)
-        #roadm.connect(linein(2,1), dropport(56), 2)
-        #roadm.connect(linein(2,1), dropport(66), 2)
-
-        #terminal = net[f't{1}']
-        #terminal.connect(ethPort=ethport(2), wdmPort=uplink(32), channel=addch)
-        #terminal.connect(ethPort=ethport(2), wdmPort=uplink(42), channel=addch)
-        #terminal.connect(ethPort=ethport(2), wdmPort=uplink(52), channel=addch)
-        #terminal.connect(ethPort=ethport(2), wdmPort=uplink(62), channel=addch)
-
-        #terminal.connect(wdmPort=downlink(34), ethPort=ethport(2), channel=dropch)
-        #terminal.connect(wdmPort=downlink(44), ethPort=ethport(2), channel=dropch)
-        #terminal.connect(wdmPort=downlink(54), ethPort=ethport(2), channel=dropch)
-        #terminal.connect(wdmPort=downlink(64), ethPort=ethport(2), channel=dropch)
-        
-        
 
     # Turn on terminals
     for i in range(1, nodecount+1):
